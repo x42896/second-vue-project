@@ -1,111 +1,154 @@
-<!-- App.vue – основной компонент страницы -->
-<!-- Основной код страницы -->
-<template>
-  <!-- @input="" много всего нужно записать ещё лучше использовать v-model="" -->
-  <!-- v-model="" – встроенный атрибут в Vue, не обработчик события, за счёт него можем получать данные и сразу устанавливать в переменную. То есть данные из input сразу добавятся в userName. Если работать с checkbox или radio, v-model имеет свою специфику -->
-  <input type="text" v-model="userName" placeholder="Имя">
-  <input type="email" v-model="userEmail" placeholder="Email">
-  <input type="password" v-model="userPass" placeholder="Пароль">
-  <p class="block-name">{{ error }}</p>
-  <!-- При нажатии на кнопку получаем все данные из переменных и добавляем новый элемент в массив -->
-  <button @click="sendData()">Отправить</button>
-
-
-  <!-- Тут для теста выводим сразу значения переменных которые пишем в input -->
-  <p>{{ userName }}</p>
-  <p>{{ userEmail }}</p>
-  <p>{{ userPass }}</p>
-
-  <!-- Вывод новых данных из массива -->
-  <p>{{ users }}</p>
-
-
-
-  <!-- Доп атрибут if, else-if, else если в массиве ничего нет то покажем этот блок -->
-  <div v-if="users.length == 0" class="user">
-    У нас нету пользователей
-  </div>
-  <!-- Если только 1 пользователь то этот блок покажем -->
-  <div v-else-if="users.length == 1" class="user">
-    У нас только 1 пользователь
-  </div>
-  <!-- Иначе этот блок покажем -->
-  <div v-else class="user">
-    У нас больше одного пользователя
-  </div>
-  
-
-
-  <!-- Сюда подставится всё что есть в User.vue в разделе template-->
-  <User v-for="(el, index) in users" :key="index" />
-</template>
-
-
-
-<!-- Подключаются все скрипты -->
 <script>
-// Импорт данныех из файла User.vue (чтобы подставлять в template)
-import User from './components/User.vue'
-  // Объект который экспортируем по умолчанию, в котором хранятся различные действия
+// Импортируем Axios для работы с JSON по API
+import axios from 'axios'
+
   export default {
-    // Указываем с какими компоненатми из Users.vue будем работать
-    components: { User },
-    // Стандартная запись для переменных которые добавляются в основной html
     data() {
       return {
-        users: [],
+        city: '',
         error: '',
-        userName: '',
-        userEmail: '',
-        userPass: ''
+        info: null
       }
     },
-    // Функции которые можно будет вызывать чтобы не писать Vue код прямо в HTML
+    computed: {
+      cityName() {
+        return `"${this.city}"`
+      },
+      showTemp() {
+        return `Температура: "${this.info.main.temp}"`
+      },
+      showFeelLike() {
+        return `Ощущается как: "${this.info.main.feels_like}"`
+      },
+      showMinTemp() {
+        return `Минимальная температура: "${this.info.main.temp_min}"`
+      },
+      showMaxTemp() {
+        return `Максимальная температура: "${this.info.main.temp_max}"`
+      },
+    },
     methods: {
-      // Проверка ввёл ли пользователь все данные
-      sendData() {
-        // Улучшенная записать, так везде можно писать и добавить trim() а ниже более простая
-        if (!this.userName.trim()) {
-          this.error = 'Имя не введено'
-          return
-        // email лучше валидировать с помощью RegExp (не знаю пока что это)
-        } else if (this.userEmail == '') {
-          this.error = 'Email не введен'
-          return
-        } else if (this.userPass == '') {
-          this.error = 'Пароль не введен'
-          return
+      getWeather() {
+        // Если пользователь ввёл меньше двух символов то выводим ошибку в div и выходим из всего метода
+        if (this.city.trim().length < 2) {
+          this.error = 'Нужно название более одного символа'
+          return false
         }
 
-        // Пустое значение если ошибки исправлены
+        // Очишаем ошибку
         this.error = ''
 
-        // Обращене к data() в ней к users и добавление нового объекта в users где ключ будет name, а значение из переменных data() подставится
-        // Чтобы обратиться к верному массиву нужно прописать this и уже потом users.push({
-        this.users.push({
-          name: this.userName,
-          email: this.userEmail,
-          pass: this.userPass
-        })
-
-      
-        // В конце лучше очищаться все поля input для лучшего UX например this.userName = '' и т.д
+        // Получение JSON по API по ссылке. Если успешно соединились то .then (тогда) сохраняем результат в this.info
+        axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${this.city}&units=metric&appid=a0b628fcff2b5f2546f862485b9ba834`).then(res => (this.info = res.data))
+        // res => (this.info = res)) – это аналог записи полной функции и улучшам тут ещё что обращаемся к объекту data в json
+        /* .then(function(res) { 
+          this.info = res;
+        }) */
       }
+      
     }
   }
 </script>
 
 
 
-<!-- Весь CSS для этого компонента -->
+
+
+
+<template>
+  <div class="wrapper">
+    <h1>Погодное приложение</h1>
+    <!-- Это запись без условия -->
+    <!-- <p>Узнать погоду в {{ city }}</p> -->
+    
+    <!-- Это с тернарным (коротким) уловием и доп ковычками к тексту, модно и через (конкатенацию) написать `"${city}"` -->
+    <p>Узнать погоду в {{ city == '' ? 'вашем городе' : '"' + city + '"' }}</p>
+    
+    <!-- $event.target.value за счёт этой команды мы кладёт в переменную значение которое вводит пользователь. И важно прописать this чтобы установить в переменную значение -->
+    <!-- this означает что мы прямо к этому компоненту обращаемся и именно с этим компонентом и будем работать и именно с переменными в этом компоненте -->
+    <!-- <input type="text" v-on:input="this.city = $event.target.value" placeholder="Введите город"> -->
+    <!-- Можно упросить строку выше и записать -->
+    <!-- <input type="text" @input="this.city = $event.target.value" placeholder="Введите город"> -->
+    <!-- Или ешё проще -->
+    <input type="text" v-model="city" placeholder="Введите город">
+
+    <!-- <button v-show="city != ''">Получить погоду</button> -->
+    <button v-if="city != ''" @click="getWeather()">Получить погоду</button>
+    <button disabled v-else>Ведите название города</button>
+    <p class="error">{{ error }}</p>
+
+    <!-- Показываем JSON объект при нажатии на кнопку -->
+    <!-- Важно написать v-if а не v-show (проверят только на null) -->
+    <!-- Чуть ниже у себя в учебнике записал почему так и что лучше сделать проверку через .catch() -->
+    <div v-if="info != null">
+      <p>{{ showTemp }}</p>
+      <p>{{ showFeelLike }}</p>
+      <p>{{ showMinTemp }}</p>
+      <p>{{ showMaxTemp }}</p>
+    </div>
+    
+  </div>
+</template>
+
+
+
+
+
+
 <style scoped>
-  .user {
-    width: 500px;
-    margin-top: 20px;
-    border: 1px solid silver;
-    background-color: lightgray;
-    color: black;
+  .wrapper {
+    width: 900px;
+    height: 500px;
     padding: 20px;
-    border-radius: 5px;
+    border-radius: 50px;
+    background-color: rgb(30, 10, 48);
+    text-align: center;
+    color: white;
+  }
+
+  .wrapper h1 {
+    margin-top: 50px;
+  }
+
+  .wrapper p {
+    margin-top: 20px;
+  }
+
+  .wrapper input {
+    margin-top: 30px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid black;
+    color: white;
+    font-size: 14px;
+    padding: 5px 10px;
+    outline: none;
+  }
+
+  .wrapper input:focus {
+    border-bottom-color: darkmagenta;
+  }
+
+  .wrapper button {
+    background-color: rgb(255, 157, 0);
+    color: white;
+    border-radius: 10px;
+    border: 2px solid rgb(217, 83, 10);
+    padding: 10px 15px;
+    margin-right: 20px;
+    cursor: pointer;
+    transition: 0.5s ease; 
+  }
+
+  .wrapper button:disabled {
+    cursor: not-allowed;
+  }
+
+  .wrapper button:hover {
+    transform: scale(1.1) translateY(-5px);
+  }
+
+  .error {
+    color: tomato;
   }
 </style>
